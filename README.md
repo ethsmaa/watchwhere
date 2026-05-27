@@ -16,33 +16,36 @@ Needs [Bun](https://bun.sh) (≥ 1.1).
 
 ```bash
 bun install -g watchwhere
-export WATCHWHERE_PROXY=https://watchwhere-proxy.ethsmaa.workers.dev
-ww init       # asks for region + your subscriptions
+ww init       # asks for region + subscriptions
 ww matrix     # search a movie
 ```
 
-That's it. The hosted proxy handles TMDB calls — **no API token needed**.
+That's it. No TMDB token, no signup — calls go through a hosted proxy by
+default.
 
-To make the proxy stick across terminal sessions, add the `export` line to
-your `~/.zshrc` or `~/.bashrc`.
+## with your own TMDB token
 
-## with your own TMDB token (no proxy)
-
-Prefer to talk to TMDB directly? Get a free v4 Read Access Token from
+Don't want to use the hosted proxy? Get a free v4 Read Access Token from
 [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api)
-(pick the **v4 Read Access Token**, not the v3 API key), then:
+(the **v4 Read Access Token**, not the v3 API key), then:
 
 ```bash
-bun install -g watchwhere
-ww init       # paste your token, then region + subs
+WATCHWHERE_PROXY=off ww init   # asks for token, region, subs
 ww matrix
+```
+
+Or point at your own self-hosted proxy:
+
+```bash
+export WATCHWHERE_PROXY=https://your-proxy.example.com
+ww init
 ```
 
 ## commands
 
 ```
 ww <title>       search and show providers
-ww init          set up token, region, subscriptions
+ww init          set up region, subscriptions (and token, if not using proxy)
 ww subs          edit subscriptions
 ww lang          change UI language (en / tr)
 ww region        change region

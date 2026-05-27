@@ -1,4 +1,11 @@
-const PROXY = process.env.WATCHWHERE_PROXY?.replace(/\/$/, "");
+const HOSTED_PROXY = "https://watchwhere-proxy.ethsmaa.workers.dev";
+const proxyEnv = process.env.WATCHWHERE_PROXY;
+const PROXY =
+  proxyEnv === undefined
+    ? HOSTED_PROXY
+    : proxyEnv === "" || proxyEnv === "off"
+      ? undefined
+      : proxyEnv.replace(/\/$/, "");
 const TMDB_BASE = PROXY ? `${PROXY}/tmdb` : "https://api.themoviedb.org/3";
 const FETCH_TIMEOUT_MS = 10_000;
 const DEFAULT_TMDB_LANGUAGE = "en-US";
