@@ -90,10 +90,13 @@ interface Catalog {
   // validation
   corruptConfig: (path: string) => string;
 
-  // lang command + cancellation
+  // lang / region commands + cancellation
   languageUpdated: (code: string) => string;
   cancelled: string;
   currentLanguage: (code: string) => string;
+  currentRegion: (code: string) => string;
+  regionUpdated: (code: string) => string;
+  regionHintReviewSubs: string;
 
   // usage / --help
   usageTagline: string;
@@ -103,6 +106,7 @@ interface Catalog {
   usageDescInit: string;
   usageDescSubs: string;
   usageDescLang: string;
+  usageDescRegion: string;
   usageDescConfig: string;
   usageDescHelp: string;
 
@@ -195,6 +199,9 @@ const en: Catalog = {
   languageUpdated: (code) => `language updated to ${code}`,
   cancelled: "cancelled",
   currentLanguage: (code) => `current: ${code}`,
+  currentRegion: (code) => `current: ${code}`,
+  regionUpdated: (code) => `region updated to ${code}`,
+  regionHintReviewSubs: "providers vary by region — run `ww subs` to review your list.",
 
   usageTagline: "where can I stream it?",
   usageSectionUsage: "usage",
@@ -203,6 +210,7 @@ const en: Catalog = {
   usageDescInit: "set up token, region, language, subscriptions",
   usageDescSubs: "edit your subscriptions only",
   usageDescLang: "change display language",
+  usageDescRegion: "change region",
   usageDescConfig: "show current config",
   usageDescHelp: "this message",
 
@@ -296,6 +304,9 @@ const tr: Catalog = {
   languageUpdated: (code) => `dil ${code} olarak güncellendi`,
   cancelled: "iptal edildi",
   currentLanguage: (code) => `mevcut: ${code}`,
+  currentRegion: (code) => `mevcut: ${code}`,
+  regionUpdated: (code) => `bölge ${code} olarak güncellendi`,
+  regionHintReviewSubs: "sağlayıcılar bölgeye göre değişir — `ww subs` ile gözden geçir.",
 
   usageTagline: "nerede izleyebilirim?",
   usageSectionUsage: "kullanım",
@@ -304,6 +315,7 @@ const tr: Catalog = {
   usageDescInit: "token, bölge, dil ve abonelikleri ayarla",
   usageDescSubs: "sadece abonelikleri düzenle",
   usageDescLang: "görüntüleme dilini değiştir",
+  usageDescRegion: "bölgeyi değiştir",
   usageDescConfig: "mevcut config'i göster",
   usageDescHelp: "bu mesaj",
 

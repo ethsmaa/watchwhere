@@ -8,6 +8,7 @@ import { runSearch } from "./commands/search.ts";
 import { runConfig } from "./commands/config.ts";
 import { runSubs } from "./commands/subs.ts";
 import { runLang } from "./commands/lang.ts";
+import { runRegion } from "./commands/region.ts";
 import { TmdbError } from "./tmdb.ts";
 
 function usage(m: ReturnType<typeof t>): string {
@@ -19,6 +20,7 @@ function usage(m: ReturnType<typeof t>): string {
     `    ww init        ${m.usageDescInit}`,
     `    ww subs        ${m.usageDescSubs}`,
     `    ww lang        ${m.usageDescLang}`,
+    `    ww region      ${m.usageDescRegion}`,
     `    ww config      ${m.usageDescConfig}`,
     `    ww --help      ${m.usageDescHelp}`,
     ``,
@@ -26,9 +28,9 @@ function usage(m: ReturnType<typeof t>): string {
   ].join("\n");
 }
 
-const COMMANDS = ["init", "subs", "lang", "config"] as const;
+const COMMANDS = ["init", "subs", "lang", "region", "config"] as const;
 type Command = (typeof COMMANDS)[number];
-const INTERACTIVE_COMMANDS: ReadonlySet<Command> = new Set(["init", "subs", "lang"]);
+const INTERACTIVE_COMMANDS: ReadonlySet<Command> = new Set(["init", "subs", "lang", "region"]);
 
 function levenshtein(a: string, b: string): number {
   if (a === b) return 0;
@@ -97,6 +99,8 @@ async function main(): Promise<void> {
         return runSubs();
       case "lang":
         return runLang();
+      case "region":
+        return runRegion();
       case "config":
         return runConfig();
     }
