@@ -10,37 +10,39 @@ I have a handful of streaming subs and I always forget which one has what.
 Got tired of opening JustWatch every time — or clicking through each app
 one by one to search. Terminal version of that lookup.
 
-## install
+## quick start
 
 Needs [Bun](https://bun.sh) (≥ 1.1).
 
-```
+```bash
 bun install -g watchwhere
-ww init
-```
-
-You'll need a free TMDB v4 Read Access Token — grab one at
-[themoviedb.org/settings/api](https://www.themoviedb.org/settings/api).
-Pick the **v4 Read Access Token**, not the v3 API key.
-
-### no-token mode (proxy)
-
-If you don't want to set up a TMDB token, point the CLI at the hosted proxy:
-
-```
 export WATCHWHERE_PROXY=https://watchwhere-proxy.ethsmaa.workers.dev
-ww init
+ww init       # asks for region + your subscriptions
+ww matrix     # search a movie
 ```
 
-The proxy serves TMDB calls on your behalf, rate-limited 100 req/hour per IP,
-24h cache. Self-host it from [`proxy/`](./proxy) on Cloudflare Workers
-(free tier) in a few minutes if you want your own.
+That's it. The hosted proxy handles TMDB calls — **no API token needed**.
+
+To make the proxy stick across terminal sessions, add the `export` line to
+your `~/.zshrc` or `~/.bashrc`.
+
+## with your own TMDB token (no proxy)
+
+Prefer to talk to TMDB directly? Get a free v4 Read Access Token from
+[themoviedb.org/settings/api](https://www.themoviedb.org/settings/api)
+(pick the **v4 Read Access Token**, not the v3 API key), then:
+
+```bash
+bun install -g watchwhere
+ww init       # paste your token, then region + subs
+ww matrix
+```
 
 ## commands
 
 ```
 ww <title>       search and show providers
-ww init          set up token, region, subs
+ww init          set up token, region, subscriptions
 ww subs          edit subscriptions
 ww lang          change UI language (en / tr)
 ww region        change region
@@ -51,8 +53,10 @@ ww --version
 
 ## notes
 
-- config (incl. token) lives in `~/.watchwhere/config.json`
+- config lives in `~/.watchwhere/config.json`
 - ui defaults to english, turkish available via `ww lang`
+- self-host your own proxy from [`proxy/`](./proxy) if you'd rather not use
+  the hosted one
 
 ## license
 
