@@ -7,7 +7,7 @@ Set FontSize 18
 Set Width 1000
 Set Height 600
 Set Theme "TokyoNight"
-Set TypingSpeed 55ms
+Set TypingSpeed 40ms
 Set Padding 30
 Set LineHeight 1.4
 Set Framerate 50
@@ -15,32 +15,30 @@ Set Shell "zsh"
 
 # --- segment 1: add disney+ to subs ---
 Type "ww subs"
-Sleep 400ms
+Sleep 350ms
 Enter
-Sleep 1800ms
+Sleep 1300ms
 
 Down
-Sleep 200ms
+Sleep 140ms
 Down
-Sleep 200ms
+Sleep 140ms
 Down
-Sleep 200ms
-Down
-Sleep 200ms
+Sleep 140ms
 Space
-Sleep 600ms
+Sleep 500ms
 Enter
-Sleep 2200ms
+Sleep 1700ms
 
 # --- segment 2: search star wars ---
 Type "ww star wars"
-Sleep 400ms
+Sleep 350ms
 Enter
-Sleep 1800ms
+Sleep 1500ms
 
 Down
-Sleep 250ms
+Sleep 200ms
 Up
-Sleep 500ms
+Sleep 450ms
 Enter
-Sleep 3500ms
+Sleep 3000ms

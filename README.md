@@ -2,6 +2,8 @@
 
 CLI to check which of your streaming subs has a movie, in your region.
 
+![demo](docs/demo.gif)
+
 ## why
 
 I have a handful of streaming subs and I always forget which one has what.
