@@ -7,16 +7,24 @@ type Env = {
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
 
-const RATE_LIMIT_MAX = 100;
+const RATE_LIMIT_MAX = 60;
 const RATE_LIMIT_WINDOW_SEC = 3600;
+const MAX_URL_LENGTH = 512;
 
-// per-prefix cache ttl (seconds)
+// strict whitelist — only the endpoints the watchwhere CLI actually uses
+const ALLOWED_PATHS: ReadonlyArray<RegExp> = [
+  /^\/search\/(movie|tv)$/,
+  /^\/(movie|tv)\/\d+\/watch\/providers$/,
+  /^\/watch\/providers\/(movie|tv)$/,
+  /^\/authentication$/,
+];
+
 const CACHE_TTL: ReadonlyArray<[string, number]> = [
-  ["/watch/providers", 24 * 60 * 60], // 24h
-  ["/search/", 60 * 60], // 1h
+  ["/watch/providers", 24 * 60 * 60],
+  ["/search/", 60 * 60],
   ["/movie/", 60 * 60],
   ["/tv/", 60 * 60],
-  ["/authentication", 0], // no cache
+  ["/authentication", 0],
 ];
 
 function ttlFor(path: string): number {
@@ -26,18 +34,33 @@ function ttlFor(path: string): number {
   return 60 * 60;
 }
 
+function isAllowedPath(path: string): boolean {
+  return ALLOWED_PATHS.some((r) => r.test(path));
+}
+
 const app = new Hono<{ Bindings: Env }>();
 
 app.get("/", (c) =>
   c.text(
     "watchwhere proxy — see https://github.com/ethsmaa/watchwhere\n" +
-      `endpoints under /tmdb/*, rate-limited ${RATE_LIMIT_MAX}/hour per IP\n`,
+      `endpoints under /tmdb/*, GET only, rate-limited ${RATE_LIMIT_MAX}/hour per IP\n`,
   ),
 );
 
-app.all("/tmdb/*", async (c) => {
+app.get("/tmdb/*", async (c) => {
+  if (c.req.url.length > MAX_URL_LENGTH) {
+    return c.json({ error: "url too long" }, 414);
+  }
+
   const ip =
     c.req.header("cf-connecting-ip") ?? c.req.header("x-real-ip") ?? "unknown";
+
+  const url = new URL(c.req.url);
+  const tmdbPath = url.pathname.replace(/^\/tmdb/, "");
+
+  if (!isAllowedPath(tmdbPath)) {
+    return c.json({ error: "endpoint not allowed" }, 403);
+  }
 
   // rate limit
   const rlKey = `rl:${ip}`;
@@ -53,12 +76,9 @@ app.all("/tmdb/*", async (c) => {
     expirationTtl: RATE_LIMIT_WINDOW_SEC,
   });
 
-  const url = new URL(c.req.url);
-  const tmdbPath = url.pathname.replace(/^\/tmdb/, "");
   const cacheKey = `c:${tmdbPath}${url.search}`;
   const ttl = ttlFor(tmdbPath);
 
-  // cache lookup
   if (ttl > 0) {
     const cached = await c.env.CACHE.get(cacheKey);
     if (cached) {
@@ -72,7 +92,6 @@ app.all("/tmdb/*", async (c) => {
     }
   }
 
-  // forward
   const tmdbUrl = `${TMDB_BASE}${tmdbPath}${url.search}`;
   const upstream = await fetch(tmdbUrl, {
     headers: {
@@ -90,7 +109,6 @@ app.all("/tmdb/*", async (c) => {
     });
   }
 
-  // store in cache, best-effort
   if (ttl > 0) {
     c.executionCtx.waitUntil(
       c.env.CACHE.put(cacheKey, body, { expirationTtl: ttl }),
@@ -105,5 +123,8 @@ app.all("/tmdb/*", async (c) => {
     },
   });
 });
+
+// any other method or path → 404
+app.all("*", (c) => c.json({ error: "not found" }, 404));
 
 export default app;
