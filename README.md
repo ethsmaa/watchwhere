@@ -23,6 +23,19 @@ You'll need a free TMDB v4 Read Access Token — grab one at
 [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api).
 Pick the **v4 Read Access Token**, not the v3 API key.
 
+### no-token mode (proxy)
+
+If you don't want to set up a TMDB token, point the CLI at a hosted proxy:
+
+```
+export WATCHWHERE_PROXY=https://watchwhere-proxy.<account>.workers.dev
+ww init
+```
+
+The proxy serves TMDB calls on your behalf, rate-limited per IP. Self-host
+it from [`proxy/`](./proxy) on Cloudflare Workers (free tier) in a few
+minutes if you want your own.
+
 ## commands
 
 ```

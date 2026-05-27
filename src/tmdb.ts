@@ -1,6 +1,9 @@
-const TMDB_BASE = "https://api.themoviedb.org/3";
+const PROXY = process.env.WATCHWHERE_PROXY?.replace(/\/$/, "");
+const TMDB_BASE = PROXY ? `${PROXY}/tmdb` : "https://api.themoviedb.org/3";
 const FETCH_TIMEOUT_MS = 10_000;
 const DEFAULT_TMDB_LANGUAGE = "en-US";
+
+export const usingProxy = PROXY !== undefined;
 
 export type MediaType = "movie" | "tv";
 

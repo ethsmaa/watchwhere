@@ -75,6 +75,7 @@ interface Catalog {
   invalidToken: string;
   tokenTooShort: string;
   verifying: string;
+  usingProxyNotice: string;
   regionPrompt: string;
   regionInvalid: string;
   displayLanguagePrompt: string;
@@ -181,6 +182,7 @@ const en: Catalog = {
   invalidToken: "invalid TMDB token. use the v4 'Read Access Token'.",
   tokenTooShort: "token looks too short",
   verifying: "verifying token… ",
+  usingProxyNotice: "using proxy — skipping token setup",
   regionPrompt: "region code (ISO-3166-1, e.g. TR / US / DE):",
   regionInvalid: "two-letter region code (e.g. TR)",
   displayLanguagePrompt: "display language:",
@@ -285,6 +287,7 @@ const tr: Catalog = {
   invalidToken: "geçersiz TMDB token. v4 'Read Access Token' kullanın.",
   tokenTooShort: "token çok kısa görünüyor",
   verifying: "token doğrulanıyor… ",
+  usingProxyNotice: "proxy kullanılıyor — token kurulumu atlanıyor",
   regionPrompt: "bölge kodu (ISO-3166-1, örn. TR / US / DE):",
   regionInvalid: "iki harfli bölge kodu (örn. TR)",
   displayLanguagePrompt: "görüntüleme dili:",

@@ -7,6 +7,10 @@ build/
 # bun
 .bun/
 
+# wrangler / cloudflare workers
+.wrangler/
+.dev.vars
+
 # editor / os
 .DS_Store
 .idea/

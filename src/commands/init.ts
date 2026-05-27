@@ -3,7 +3,7 @@ import { c } from "../colors.ts";
 import { loadConfig, saveConfig } from "../config.ts";
 import { resolveLocale, t } from "../i18n.ts";
 import { getCachedRegionProviders } from "../cache.ts";
-import { verifyToken } from "../tmdb.ts";
+import { usingProxy, verifyToken } from "../tmdb.ts";
 import { pickLanguage } from "./lang.ts";
 
 export async function runInit(): Promise<void> {
@@ -15,19 +15,26 @@ export async function runInit(): Promise<void> {
     console.log();
   }
 
-  const tmdbToken = await password({
-    message: `${m.tokenPrompt} ${c.dim(`— ${m.tokenHint}`)}`,
-    mask: "*",
-    validate: (v) => (v.trim().length > 20 ? true : m.tokenTooShort),
-  });
+  let tmdbToken: string;
+  if (usingProxy) {
+    console.log(c.dim(`  ${m.usingProxyNotice}`));
+    console.log();
+    tmdbToken = existing?.tmdbToken ?? "proxy";
+  } else {
+    tmdbToken = await password({
+      message: `${m.tokenPrompt} ${c.dim(`— ${m.tokenHint}`)}`,
+      mask: "*",
+      validate: (v) => (v.trim().length > 20 ? true : m.tokenTooShort),
+    });
 
-  process.stdout.write(c.dim(`  ${m.verifying}`));
-  const ok = await verifyToken(tmdbToken.trim());
-  if (!ok) {
-    console.log(c.red(m.failed));
-    throw new Error(m.invalidToken);
+    process.stdout.write(c.dim(`  ${m.verifying}`));
+    const ok = await verifyToken(tmdbToken.trim());
+    if (!ok) {
+      console.log(c.red(m.failed));
+      throw new Error(m.invalidToken);
+    }
+    console.log(c.green(m.ok));
   }
-  console.log(c.green(m.ok));
 
   const region = (
     await input({
