@@ -1,6 +1,6 @@
 {
   "name": "watchwhere",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "region-aware streaming availability CLI — find which of your subs has a given title",
   "type": "module",
   "bin": {

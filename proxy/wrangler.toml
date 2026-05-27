@@ -5,6 +5,6 @@ compatibility_date = "2025-01-01"
 # bind KV namespace — id replaced after `wrangler kv namespace create CACHE`
 [[kv_namespaces]]
 binding = "CACHE"
-id = "REPLACE_ME"
+id = "912dec5ab8da43a78ea559409191cf46"
 
 # TMDB_TOKEN set via: wrangler secret put TMDB_TOKEN
