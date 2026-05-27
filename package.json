@@ -1,0 +1,47 @@
+{
+  "name": "watchwhere",
+  "version": "0.1.0",
+  "description": "region-aware streaming availability CLI — find which of your subs has a given title",
+  "type": "module",
+  "bin": {
+    "watchwhere": "./src/index.ts",
+    "ww": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "cli",
+    "tmdb",
+    "streaming",
+    "movies",
+    "bun",
+    "typescript"
+  ],
+  "author": "Esma Oruç",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ethsmaa/watchwhere.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ethsmaa/watchwhere/issues"
+  },
+  "homepage": "https://github.com/ethsmaa/watchwhere#readme",
+  "dependencies": {
+    "@inquirer/prompts": "^7.2.1"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "bun": ">=1.1.0"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ]
+}

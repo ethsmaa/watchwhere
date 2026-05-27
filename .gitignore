@@ -1,0 +1,23 @@
+node_modules/
+dist/
+build/
+*.log
+*.tsbuildinfo
+
+# bun
+.bun/
+
+# editor / os
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
+
+# env
+.env
+.env.local
+.env.*.local
+
+# local config (this is what users create at runtime)
+.watchwhere/

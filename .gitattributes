@@ -1,0 +1,8 @@
+# force LF on checkout for everyone
+* text=auto eol=lf
+
+# binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
