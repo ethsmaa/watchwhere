@@ -131,15 +131,15 @@ async function displayItem(
   const ads = regionData.ads ?? [];
   if (ads.length > 0) {
     console.log();
-    console.log(`  ${pad(m.ads, 6)}${joinNames(ads)}`);
+    console.log(`  ${pad(m.ads, 10)}${joinNames(ads)}`);
   }
 
   const rent = regionData.rent ?? [];
   const buy = regionData.buy ?? [];
   if (rent.length > 0 || buy.length > 0) {
     if (ads.length === 0) console.log();
-    if (rent.length > 0) console.log(`  ${pad(m.rent, 6)}${joinNames(rent)}`);
-    if (buy.length > 0) console.log(`  ${pad(m.buy, 6)}${joinNames(buy)}`);
+    if (rent.length > 0) console.log(`  ${pad(m.rent, 10)}${joinNames(rent)}`);
+    if (buy.length > 0) console.log(`  ${pad(m.buy, 10)}${joinNames(buy)}`);
   }
 
   if (regionData.link) {
