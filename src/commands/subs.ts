@@ -35,6 +35,7 @@ export async function runSubs(): Promise<void> {
     })),
     pageSize: 15,
     loop: false,
+    theme: { keybindings: ["vim"] },
   });
 
   const added = subscriptions.filter((id) => !current.has(id)).length;

@@ -77,6 +77,7 @@ export async function runInit(): Promise<void> {
     choices,
     pageSize: 15,
     loop: false,
+    theme: { keybindings: ["vim"] },
   });
 
   const saved = await saveConfig({

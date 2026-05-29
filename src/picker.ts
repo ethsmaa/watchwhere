@@ -7,9 +7,13 @@ import {
   useKeypress,
   usePagination,
   usePrefix,
+  useRef,
   useState,
 } from "@inquirer/core";
+import { cursorHide } from "@inquirer/ansi";
 import { c } from "./colors.ts";
+
+const GG_TIMEOUT_MS = 500;
 
 export interface PickerChoice<Value> {
   readonly name: string;
@@ -50,9 +54,14 @@ const promptImpl = createPrompt<unknown | null, PickerConfig<unknown>>(
     const prefix = usePrefix({ status, theme });
     const items = config.choices;
     const [active, setActive] = useState(0);
+    const lastGAt = useRef(0);
 
     useKeypress((key) => {
-      if (key.name === "escape") {
+      // sequence is present at runtime but not in the type; cast to read it
+      const seq = (key as unknown as { sequence?: string }).sequence;
+
+      // esc or q: cancel
+      if (key.name === "escape" || seq === "q") {
         setCancelled(true);
         setStatus("done");
         done(null);
@@ -64,11 +73,29 @@ const promptImpl = createPrompt<unknown | null, PickerConfig<unknown>>(
         if (chosen) done(chosen.value);
         return;
       }
-      if (isUpKey(key, [])) {
+      // G (shift+g): bottom
+      if (seq === "G") {
+        setActive(items.length - 1);
+        return;
+      }
+      // gg: top (two g within timeout)
+      if (seq === "g") {
+        const now = Date.now();
+        if (now - lastGAt.current < GG_TIMEOUT_MS) {
+          setActive(0);
+          lastGAt.current = 0;
+        } else {
+          lastGAt.current = now;
+        }
+        return;
+      }
+      // up or k
+      if (isUpKey(key, []) || seq === "k") {
         if (active > 0) setActive(active - 1);
         return;
       }
-      if (isDownKey(key, [])) {
+      // down or j
+      if (isDownKey(key, []) || seq === "j") {
         if (active < items.length - 1) setActive(active + 1);
         return;
       }
@@ -98,7 +125,7 @@ const promptImpl = createPrompt<unknown | null, PickerConfig<unknown>>(
 
     const description = items[active]?.description;
     const helpLine = [
-      ["↑↓", "navigate"],
+      ["↑↓ jk", "navigate"],
       ["⏎", "select"],
       ...(config.extraKeys ?? []),
     ]
@@ -112,7 +139,7 @@ const promptImpl = createPrompt<unknown | null, PickerConfig<unknown>>(
       helpLine,
     ]
       .filter((line) => line !== "")
-      .join("\n");
+      .join("\n") + cursorHide;
   },
 );
 
