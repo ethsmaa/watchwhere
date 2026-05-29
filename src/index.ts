@@ -144,7 +144,7 @@ async function maybeNotifyUpdate(): Promise<void> {
     const cfg = await loadConfig().catch(() => null);
     const m = t(resolveLocale(cfg?.language));
     console.log();
-    console.log(c.dim(`  ${c.yellow("›")} ${m.updateAvailable(newer)}`));
+    console.log(`  ${c.yellow("›")} ${c.dim(m.updateAvailable(newer))}`);
   } catch {
     // best-effort, never block exit
   }
