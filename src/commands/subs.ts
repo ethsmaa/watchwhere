@@ -3,6 +3,7 @@ import { c } from "../colors.ts";
 import { loadConfig, saveConfig } from "../config.ts";
 import { resolveLocale, t } from "../i18n.ts";
 import { getCachedRegionProviders } from "../cache.ts";
+import { applyRegionPinning, isSubscriptionProvider } from "../tmdb.ts";
 
 export async function runSubs(): Promise<void> {
   const cfg = await loadConfig();
@@ -12,7 +13,11 @@ export async function runSubs(): Promise<void> {
   const m = t(resolveLocale(cfg.language));
 
   process.stdout.write(c.dim(`  ${m.loadingProviders(cfg.region)}`));
-  const providers = await getCachedRegionProviders(cfg.region, cfg.tmdbToken);
+  const allProviders = await getCachedRegionProviders(cfg.region, cfg.tmdbToken);
+  const providers = applyRegionPinning(
+    allProviders.filter(isSubscriptionProvider),
+    cfg.region,
+  );
   console.log(c.dim(m.providersFound(providers.length)));
 
   if (providers.length === 0) {

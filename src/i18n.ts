@@ -52,7 +52,6 @@ interface Catalog {
   ads: string;
   rent: string;
   buy: string;
-  link: string;
 
   // config (show)
   noConfigYet: string;
@@ -130,6 +129,10 @@ interface Catalog {
 
   // update notifier
   updateAvailable: (version: string) => string;
+
+  // physical releases
+  physicalLabel: string;
+  noPhysicalRelease: string;
 }
 
 const en: Catalog = {
@@ -163,7 +166,6 @@ const en: Catalog = {
   ads: "ads",
   rent: "rent",
   buy: "buy",
-  link: "link",
 
   noConfigYet: "no config yet — run `ww init` first.",
   resolvingNames: "resolving subscription names… ",
@@ -235,6 +237,9 @@ const en: Catalog = {
   ambiguousQuery: (n) => `${n} matches, query is ambiguous. refine, or run interactively.`,
 
   updateAvailable: (version) => `new version available: ${version} (bun install -g watchwhere)`,
+
+  physicalLabel: "physical",
+  noPhysicalRelease: "no physical release in this region",
 };
 
 const tr: Catalog = {
@@ -270,7 +275,6 @@ const tr: Catalog = {
   ads: "reklamlı",
   rent: "kirala",
   buy: "satın al",
-  link: "bağlantı",
 
   noConfigYet: "henüz config yok — önce `ww init` çalıştır.",
   resolvingNames: "abonelik isimleri çözümleniyor… ",
@@ -343,6 +347,9 @@ const tr: Catalog = {
   ambiguousQuery: (n) => `${n} eşleşme var, sorgu belirsiz. daralt veya interaktif çalıştır.`,
 
   updateAvailable: (version) => `yeni sürüm var: ${version} (bun install -g watchwhere)`,
+
+  physicalLabel: "fiziksel",
+  noPhysicalRelease: "bu bölgede fiziksel release yok",
 };
 
 const CATALOGS: Record<Locale, Catalog> = { en, tr };

@@ -72,6 +72,24 @@ export interface TmdbProvidersListResponse {
   readonly results: ReadonlyArray<TmdbProvider>;
 }
 
+export interface TmdbReleaseDate {
+  readonly certification: string;
+  readonly iso_639_1: string;
+  readonly note: string;
+  readonly release_date: string;
+  readonly type: number;
+}
+
+export interface TmdbReleaseDatesByRegion {
+  readonly iso_3166_1: string;
+  readonly release_dates: ReadonlyArray<TmdbReleaseDate>;
+}
+
+export interface TmdbReleaseDatesResponse {
+  readonly id: number;
+  readonly results: ReadonlyArray<TmdbReleaseDatesByRegion>;
+}
+
 export class TmdbError extends Error {
   constructor(
     message: string,
@@ -169,6 +187,16 @@ export function getWatchProviders(
   );
 }
 
+export function getReleaseDates(
+  id: number,
+  token: string,
+): Promise<TmdbReleaseDatesResponse> {
+  return tmdbFetch<TmdbReleaseDatesResponse>(
+    `/movie/${id}/release_dates`,
+    token,
+  );
+}
+
 export function toMediaItem(
   item: TmdbMovie | TmdbTv,
   mediaType: MediaType,
@@ -238,4 +266,51 @@ export async function verifyToken(token: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// rental-only storefronts on TMDB. these aren't subscriptions, so they
+// shouldn't pollute the "your subs" picker. they still appear correctly
+// under rent/buy sections for individual movies.
+const RENTAL_ONLY_IDS: ReadonlySet<number> = new Set([
+  2,   // Apple TV (storefront, not Apple TV+)
+  3,   // Google Play Movies
+  7,   // Fandango at Home (formerly Vudu)
+  10,  // Amazon Video (a-la-carte rental, separate from Prime Video)
+  68,  // Microsoft Store
+  192, // YouTube (rental, separate from YouTube Premium)
+]);
+
+export function isSubscriptionProvider(provider: TmdbProvider): boolean {
+  return !RENTAL_ONLY_IDS.has(provider.provider_id);
+}
+
+// per-region pin order. provider ids listed here float to the top in the
+// listed order; everything else falls back to TMDB's display_priority.
+// regions not listed use TMDB order unchanged.
+const REGION_PIN_ORDER: Record<string, ReadonlyArray<number>> = {
+  TR: [
+    8,    // Netflix
+    119,  // Amazon Prime Video
+    337,  // Disney Plus
+    1899, // Max (HBO Max)
+    11,   // MUBI
+    188,  // YouTube Premium
+  ],
+};
+
+export function applyRegionPinning(
+  providers: ReadonlyArray<TmdbProvider>,
+  region: string,
+): ReadonlyArray<TmdbProvider> {
+  const pinned = REGION_PIN_ORDER[region];
+  if (!pinned || pinned.length === 0) return providers;
+  const orderById = new Map(pinned.map((id, i) => [id, i]));
+  const top: TmdbProvider[] = [];
+  const rest: TmdbProvider[] = [];
+  for (const p of providers) {
+    if (orderById.has(p.provider_id)) top.push(p);
+    else rest.push(p);
+  }
+  top.sort((a, b) => orderById.get(a.provider_id)! - orderById.get(b.provider_id)!);
+  return [...top, ...rest];
 }

@@ -15,6 +15,7 @@ const MAX_URL_LENGTH = 512;
 const ALLOWED_PATHS: ReadonlyArray<RegExp> = [
   /^\/search\/(movie|tv)$/,
   /^\/(movie|tv)\/\d+\/watch\/providers$/,
+  /^\/movie\/\d+\/release_dates$/,
   /^\/watch\/providers\/(movie|tv)$/,
   /^\/authentication$/,
 ];

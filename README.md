@@ -61,6 +61,10 @@ ww --version
 - self-host your own proxy from [`proxy/`](./proxy) if you'd rather not use
   the hosted one
 
+## attribution
+
+this product uses the TMDB API but is not endorsed or certified by TMDB.
+
 ## license
 
 MIT

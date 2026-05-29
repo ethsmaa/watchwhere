@@ -4,10 +4,12 @@ import { resolveLocale, t } from "../i18n.ts";
 import { picker } from "../picker.ts";
 import { editableInput } from "../prompts.ts";
 import {
+  getReleaseDates,
   getWatchProviders,
   searchAll,
   type MediaItem,
   type TmdbProvider,
+  type TmdbReleaseDate,
 } from "../tmdb.ts";
 
 const PAGE_SIZE = 10;
@@ -32,6 +34,54 @@ function mark(owned: boolean): string {
 
 function joinNames(providers: ReadonlyArray<TmdbProvider> | undefined): string {
   return providers?.map((p) => p.provider_name).join(", ") ?? "";
+}
+
+// pick at most one entry per modern format (4k / blu-ray / dvd), latest first.
+// older formats (laserdisc, vhs, steelbook, etc.) are dropped to keep output tight.
+const PHYSICAL_FORMATS: ReadonlyArray<{ key: string; match: RegExp }> = [
+  { key: "4k uhd", match: /\b(4k|uhd)\b/i },
+  { key: "blu-ray", match: /blu.?ray/i },
+  { key: "dvd", match: /\bdvd\b/i },
+];
+
+function printPhysical(
+  releases: ReadonlyArray<TmdbReleaseDate>,
+  region: string,
+  m: ReturnType<typeof t>,
+): void {
+  const physical = releases
+    .filter((r) => r.type === 5 && r.note.trim() !== "")
+    .sort((a, b) => b.release_date.localeCompare(a.release_date));
+  if (physical.length === 0) return;
+
+  const byFormat = new Map<string, TmdbReleaseDate>();
+  for (const r of physical) {
+    for (const fmt of PHYSICAL_FORMATS) {
+      if (fmt.match.test(r.note) && !byFormat.has(fmt.key)) {
+        byFormat.set(fmt.key, r);
+        break;
+      }
+    }
+  }
+  if (byFormat.size === 0) return;
+
+  const ordered = PHYSICAL_FORMATS.map((fmt) => byFormat.get(fmt.key)).filter(
+    (r): r is TmdbReleaseDate => r !== undefined,
+  );
+
+  console.log();
+  console.log(c.dim(`  ${m.physicalLabel} (${region})`));
+  const width = Math.max(
+    ...PHYSICAL_FORMATS.filter((fmt) => byFormat.has(fmt.key)).map(
+      (fmt) => fmt.key.length,
+    ),
+  );
+  for (const r of ordered) {
+    const key = PHYSICAL_FORMATS.find((fmt) => fmt.match.test(r.note))!.key;
+    const label = pad(key, width + 2);
+    const date = r.release_date.slice(0, 10);
+    console.log(`  ${c.dim(label)}${date}`);
+  }
 }
 
 async function pickItem(
@@ -86,7 +136,13 @@ async function displayItem(
   m: ReturnType<typeof t>,
 ): Promise<void> {
   process.stdout.write(c.dim(`  ${m.fetchingProviders(cfg.region)}`));
-  const providers = await getWatchProviders(item.id, item.mediaType, cfg.tmdbToken);
+  const [providers, releases] = await Promise.all([
+    getWatchProviders(item.id, item.mediaType, cfg.tmdbToken),
+    // physical releases only exist for movies; failures don't break the search
+    item.mediaType === "movie"
+      ? getReleaseDates(item.id, cfg.tmdbToken).catch(() => null)
+      : Promise.resolve(null),
+  ]);
   console.log(c.dim(m.done));
 
   const regionData = providers.results[cfg.region];
@@ -142,9 +198,21 @@ async function displayItem(
     if (buy.length > 0) console.log(`  ${pad(m.buy, 10)}${joinNames(buy)}`);
   }
 
-  if (regionData.link) {
-    console.log();
-    console.log(`  ${c.dim(m.link)}  ${c.cyan(regionData.link)}`);
+  if (releases) {
+    // physical release data on TMDB is sparse outside of US; if the user's
+    // region has nothing labeled, fall back to US so the feature still works
+    const inRegion =
+      releases.results.find((r) => r.iso_3166_1 === cfg.region)?.release_dates ?? [];
+    const hasLabeled = inRegion.some(
+      (r) => r.type === 5 && r.note.trim() !== "",
+    );
+    if (hasLabeled) {
+      printPhysical(inRegion, cfg.region, m);
+    } else {
+      const usReleases =
+        releases.results.find((r) => r.iso_3166_1 === "US")?.release_dates ?? [];
+      printPhysical(usReleases, "US", m);
+    }
   }
 }
 

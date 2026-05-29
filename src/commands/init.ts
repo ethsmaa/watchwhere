@@ -3,7 +3,12 @@ import { c } from "../colors.ts";
 import { loadConfig, saveConfig } from "../config.ts";
 import { resolveLocale, t } from "../i18n.ts";
 import { getCachedRegionProviders } from "../cache.ts";
-import { usingProxy, verifyToken } from "../tmdb.ts";
+import {
+  applyRegionPinning,
+  isSubscriptionProvider,
+  usingProxy,
+  verifyToken,
+} from "../tmdb.ts";
 import { pickLanguage } from "./lang.ts";
 
 export async function runInit(): Promise<void> {
@@ -50,7 +55,11 @@ export async function runInit(): Promise<void> {
   const language = await pickLanguage(m, existing?.language);
 
   process.stdout.write(c.dim(`  ${m.loadingProviders(region)}`));
-  const providers = await getCachedRegionProviders(region, tmdbToken.trim());
+  const allProviders = await getCachedRegionProviders(region, tmdbToken.trim());
+  const providers = applyRegionPinning(
+    allProviders.filter(isSubscriptionProvider),
+    region,
+  );
   console.log(c.dim(m.providersFound(providers.length)));
 
   if (providers.length === 0) {
