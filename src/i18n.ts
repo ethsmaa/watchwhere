@@ -127,6 +127,9 @@ interface Catalog {
   // non-TTY
   ttyRequired: (cmd: string) => string;
   ambiguousQuery: (n: number) => string;
+
+  // update notifier
+  updateAvailable: (version: string) => string;
 }
 
 const en: Catalog = {
@@ -228,8 +231,10 @@ const en: Catalog = {
   relativeHours: (n) => `${n} hr ago`,
   relativeDays: (n) => `${n} day${n === 1 ? "" : "s"} ago`,
 
-  ttyRequired: (cmd) => `\`ww ${cmd}\` is interactive — run it in a terminal, not a pipe.`,
-  ambiguousQuery: (n) => `${n} matches — query is ambiguous. refine, or run interactively.`,
+  ttyRequired: (cmd) => `\`ww ${cmd}\` is interactive. run it in a terminal, not a pipe.`,
+  ambiguousQuery: (n) => `${n} matches, query is ambiguous. refine, or run interactively.`,
+
+  updateAvailable: (version) => `new version available: ${version} (bun install -g watchwhere)`,
 };
 
 const tr: Catalog = {
@@ -334,8 +339,10 @@ const tr: Catalog = {
   relativeHours: (n) => `${n} saat önce`,
   relativeDays: (n) => `${n} gün önce`,
 
-  ttyRequired: (cmd) => `\`ww ${cmd}\` interaktif — pipe'da değil, terminalde çalıştır.`,
-  ambiguousQuery: (n) => `${n} eşleşme var — sorgu belirsiz. daralt veya interaktif çalıştır.`,
+  ttyRequired: (cmd) => `\`ww ${cmd}\` interaktif. pipe'da değil, terminalde çalıştır.`,
+  ambiguousQuery: (n) => `${n} eşleşme var, sorgu belirsiz. daralt veya interaktif çalıştır.`,
+
+  updateAvailable: (version) => `yeni sürüm var: ${version} (bun install -g watchwhere)`,
 };
 
 const CATALOGS: Record<Locale, Catalog> = { en, tr };

@@ -10,6 +10,7 @@ import { runSubs } from "./commands/subs.ts";
 import { runLang } from "./commands/lang.ts";
 import { runRegion } from "./commands/region.ts";
 import { TmdbError } from "./tmdb.ts";
+import { checkForUpdate } from "./update-check.ts";
 
 function usage(m: ReturnType<typeof t>): string {
   return [
@@ -125,7 +126,31 @@ async function main(): Promise<void> {
   await runSearch(args.join(" "), cfg);
 }
 
-main().catch(async (err: unknown) => {
+async function maybeNotifyUpdate(): Promise<void> {
+  // skip on quick lookups, only show after real work
+  const first = process.argv[2];
+  if (
+    !first ||
+    first === "--version" ||
+    first === "-v" ||
+    first === "--help" ||
+    first === "-h"
+  ) {
+    return;
+  }
+  try {
+    const newer = await checkForUpdate(pkg.version);
+    if (!newer) return;
+    const cfg = await loadConfig().catch(() => null);
+    const m = t(resolveLocale(cfg?.language));
+    console.log();
+    console.log(c.dim(`  ${c.yellow("›")} ${m.updateAvailable(newer)}`));
+  } catch {
+    // best-effort, never block exit
+  }
+}
+
+main().then(maybeNotifyUpdate).catch(async (err: unknown) => {
   const cfg = await loadConfig().catch(() => null);
   const m = t(resolveLocale(cfg?.language));
 
