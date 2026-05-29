@@ -18,10 +18,11 @@ build/
 *.swp
 *~
 
-# env
+# env / secrets
 .env
 .env.local
 .env.*.local
+.npmrc
 
 # local config (this is what users create at runtime)
 .watchwhere/
