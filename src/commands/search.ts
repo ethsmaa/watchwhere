@@ -15,6 +15,19 @@ import {
 const PAGE_SIZE = 10;
 const SOFT_LIMIT = 25;
 const OVERVIEW_MAX = 140;
+const OLDEST_FILM_YEAR = 1888;
+
+function parseQuery(input: string): { query: string; year?: number } {
+  const match = input.match(/^(.+?)\s+(\d{4})$/);
+  if (match && match[1] && match[2]) {
+    const year = Number.parseInt(match[2], 10);
+    const maxYear = new Date().getFullYear() + 2;
+    if (year >= OLDEST_FILM_YEAR && year <= maxYear) {
+      return { query: match[1].trim(), year };
+    }
+  }
+  return { query: input };
+}
 
 function year(date: string | null): string {
   return date && date.length >= 4 ? date.slice(0, 4) : "????";
@@ -221,14 +234,29 @@ export async function runSearch(query: string, cfg: Config): Promise<void> {
   let currentQuery = query.trim();
   if (!currentQuery) throw new Error(m.searchEmpty);
 
-  // pipe mode: no prompts
-  if (!process.stdin.isTTY) {
-    process.stdout.write(c.dim(`  ${m.searching(currentQuery)}`));
-    const results = await searchAll(currentQuery, cfg.tmdbToken, {
-      region: cfg.region,
+  const runSearchOnce = async (
+    raw: string,
+  ): Promise<ReadonlyArray<MediaItem>> => {
+    const parsed = parseQuery(raw);
+    const displayQ = parsed.year
+      ? `${parsed.query} (${parsed.year})`
+      : parsed.query;
+    process.stdout.write(c.dim(`  ${m.searching(displayQ)}`));
+    // no region: TMDB returns regional release dates with region param,
+    // but year filter expects original release year
+    const all = await searchAll(parsed.query, cfg.tmdbToken, {
       language: cfg.language,
     });
+    const results = parsed.year
+      ? all.filter((r) => r.date?.slice(0, 4) === String(parsed.year))
+      : all;
     console.log(c.dim(m.resultsCount(results.length)));
+    return results;
+  };
+
+  // pipe mode: no prompts
+  if (!process.stdin.isTTY) {
+    const results = await runSearchOnce(currentQuery);
     if (results.length === 0) throw new Error(m.noMatch);
     if (results.length > 1) throw new Error(m.ambiguousQuery(results.length));
     await displayItem(results[0]!, cfg, m);
@@ -236,12 +264,7 @@ export async function runSearch(query: string, cfg: Config): Promise<void> {
   }
 
   while (true) {
-    process.stdout.write(c.dim(`  ${m.searching(currentQuery)}`));
-    const results = await searchAll(currentQuery, cfg.tmdbToken, {
-      region: cfg.region,
-      language: cfg.language,
-    });
-    console.log(c.dim(m.resultsCount(results.length)));
+    const results = await runSearchOnce(currentQuery);
 
     let picked: MediaItem | null = null;
     if (results.length > 0) {

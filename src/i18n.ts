@@ -118,6 +118,7 @@ interface Catalog {
   tokenExpired: string;
   networkOffline: string;
   networkTimeout: string;
+  rateLimited: string;
   relativeNow: string;
   relativeMinutes: (n: number) => string;
   relativeHours: (n: number) => string;
@@ -228,6 +229,7 @@ const en: Catalog = {
   tokenExpired: "TMDB token rejected (401). run `ww init` to re-enter it.",
   networkOffline: "couldn't reach TMDB. check your internet connection.",
   networkTimeout: "TMDB request timed out. try again, or check your connection.",
+  rateLimited: "rate limit hit. try again in an hour, or set WATCHWHERE_PROXY=off to use your own TMDB token.",
   relativeNow: "just now",
   relativeMinutes: (n) => `${n} min ago`,
   relativeHours: (n) => `${n} hr ago`,
@@ -338,6 +340,7 @@ const tr: Catalog = {
   tokenExpired: "TMDB token reddedildi (401). yenilemek için `ww init` çalıştır.",
   networkOffline: "TMDB'ye ulaşılamadı. internet bağlantını kontrol et.",
   networkTimeout: "TMDB isteği zaman aşımına uğradı. tekrar dene veya bağlantını kontrol et.",
+  rateLimited: "rate limit doldu. bir saat sonra dene veya WATCHWHERE_PROXY=off ile kendi TMDB token'ını kullan.",
   relativeNow: "şimdi",
   relativeMinutes: (n) => `${n} dk önce`,
   relativeHours: (n) => `${n} saat önce`,

@@ -162,6 +162,7 @@ main().then(maybeNotifyUpdate).catch(async (err: unknown) => {
   let displayMsg = err instanceof Error ? err.message : String(err);
   if (err instanceof TmdbError) {
     if (err.status === 401) displayMsg = m.tokenExpired;
+    else if (err.status === 429) displayMsg = m.rateLimited;
     else if (err.status === 0 && err.message.includes("timed out")) {
       displayMsg = m.networkTimeout;
     } else if (err.status === 0) {
