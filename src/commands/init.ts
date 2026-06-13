@@ -1,5 +1,6 @@
-import { checkbox, input, password } from "@inquirer/prompts";
+import { input, password } from "@inquirer/prompts";
 import { c } from "../colors.ts";
+import { filterableCheckbox } from "../checkbox.ts";
 import { loadConfig, saveConfig } from "../config.ts";
 import { resolveLocale, t } from "../i18n.ts";
 import { getCachedRegionProviders } from "../cache.ts";
@@ -72,13 +73,34 @@ export async function runInit(): Promise<void> {
     checked: existing?.subscriptions.includes(p.provider_id) ?? false,
   }));
 
-  const subscriptions = await checkbox<number>({
-    message: `${m.yourSubsLabel(region)} ${c.dim(m.toggleHintConfirm)}:`,
+  const subscriptions = await filterableCheckbox<number>({
+    message: `${m.yourSubsLabel(region)}:`,
     choices,
     pageSize: 15,
-    loop: false,
-    theme: { keybindings: ["vim"] },
+    hints: {
+      navigate: m.hintNavigate,
+      jump: m.hintJump,
+      toggle: m.hintToggle,
+      search: m.hintSearch,
+      filter: m.hintFilter,
+      apply: m.hintApply,
+      clear: m.hintClear,
+      save: m.hintSave,
+      cancel: m.hintCancel,
+      searchLabel: m.searchLabel,
+      filterLabel: m.filterLabel,
+      selectedCount: m.selectedCount,
+      noMatch: m.noFilterMatch,
+    },
   });
+
+  // esc at the subs step cancels init entirely — never overwrite an
+  // existing config with an empty subscription list.
+  if (subscriptions === null) {
+    console.log();
+    console.log(`  ${c.dim(m.cancelled)}`);
+    return;
+  }
 
   const saved = await saveConfig({
     tmdbToken: tmdbToken.trim(),

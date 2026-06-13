@@ -4,10 +4,17 @@ import { resolveLocale, t } from "../i18n.ts";
 import { picker } from "../picker.ts";
 import { editableInput } from "../prompts.ts";
 import {
+  discoverPersonFilms,
+  getPersonCredits,
   getReleaseDates,
   getWatchProviders,
   searchAll,
+  searchPeople,
+  toFilmography,
+  type CreditRole,
   type MediaItem,
+  type PersonDepartment,
+  type PersonItem,
   type TmdbProvider,
   type TmdbReleaseDate,
 } from "../tmdb.ts";
@@ -97,25 +104,101 @@ function printPhysical(
   }
 }
 
-async function pickItem(
-  results: ReadonlyArray<MediaItem>,
-  m: ReturnType<typeof t>,
-): Promise<MediaItem | null> {
-  const visible = results.slice(0, SOFT_LIMIT);
-  const dropped = results.length - visible.length;
+type SearchHit =
+  | { readonly kind: "title"; readonly item: MediaItem }
+  | { readonly kind: "person"; readonly person: PersonItem };
 
-  const choices = visible.map((mi) => ({
-    name: `${tag(mi.mediaType, m)} ${mi.title} ${c.dim(`(${year(mi.date)})`)}${mi.title !== mi.originalTitle ? c.dim(` — ${mi.originalTitle}`) : ""}`,
-    value: mi,
-    description: mi.overview.slice(0, OVERVIEW_MAX),
+// keep incidental name-collisions from flooding the list: searching "matrix"
+// otherwise surfaces dozens of obscure people whose first name is Matrix.
+const MAX_INCIDENTAL_PEOPLE = 5;
+
+function normalize(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[\s._-]+/g, " ")
+    .trim();
+}
+
+// ordering: people whose full name you typed exactly lead (you clearly meant
+// the person), then titles in their own relevance order, then a few incidental
+// people whose name merely contains the query. titles and people sit on
+// different popularity scales, so the two are never compared directly.
+function rankHits(
+  titles: ReadonlyArray<MediaItem>,
+  people: ReadonlyArray<PersonItem>,
+  query: string,
+): ReadonlyArray<SearchHit> {
+  const q = normalize(query);
+  const isExactName = (p: PersonItem): boolean => normalize(p.name) === q;
+  const named = people.filter(isExactName);
+  const incidental = people
+    .filter((p) => !isExactName(p))
+    .slice(0, MAX_INCIDENTAL_PEOPLE);
+  return [
+    ...named.map((person): SearchHit => ({ kind: "person", person })),
+    ...titles.map((item): SearchHit => ({ kind: "title", item })),
+    ...incidental.map((person): SearchHit => ({ kind: "person", person })),
+  ];
+}
+
+function deptLabel(d: PersonDepartment, m: ReturnType<typeof t>): string {
+  if (d === "directing") return m.personDirector;
+  if (d === "acting") return m.personActor;
+  return m.personCrew;
+}
+
+function roleTag(role: CreditRole, m: ReturnType<typeof t>): string {
+  return c.dim(`[${role === "directing" ? m.roleDir : m.roleAct}]`);
+}
+
+function titleChoiceName(mi: MediaItem, m: ReturnType<typeof t>): string {
+  const orig = mi.title !== mi.originalTitle ? c.dim(` — ${mi.originalTitle}`) : "";
+  return `${tag(mi.mediaType, m)} ${mi.title} ${c.dim(`(${year(mi.date)})`)}${orig}`;
+}
+
+function personChoiceName(p: PersonItem, m: ReturnType<typeof t>): string {
+  const meta = [deptLabel(p.department, m), ...p.knownFor.slice(0, 2)]
+    .filter((s) => s !== "")
+    .join(" · ");
+  return `${c.dim(`[${m.tagPerson}]`)} ${p.name} ${c.dim(`(${meta})`)}`;
+}
+
+function filmChoiceName(item: MediaItem, m: ReturnType<typeof t>): string {
+  const prefix = item.role ? `${roleTag(item.role, m)} ` : "";
+  const orig =
+    item.originalTitle && item.title !== item.originalTitle
+      ? c.dim(` — ${item.originalTitle}`)
+      : "";
+  return `${prefix}${item.title} ${c.dim(`(${year(item.date)})`)}${orig}`;
+}
+
+async function pickHit(
+  hits: ReadonlyArray<SearchHit>,
+  m: ReturnType<typeof t>,
+): Promise<SearchHit | null> {
+  const visible = hits.slice(0, SOFT_LIMIT);
+  const dropped = hits.length - visible.length;
+
+  const choices = visible.map((hit) => ({
+    name:
+      hit.kind === "person"
+        ? personChoiceName(hit.person, m)
+        : titleChoiceName(hit.item, m),
+    value: hit,
+    description:
+      hit.kind === "person"
+        ? hit.person.knownFor.join(", ")
+        : hit.item.overview.slice(0, OVERVIEW_MAX),
   }));
 
   const headerParts: string[] = [m.whichOne];
   if (dropped > 0) {
-    headerParts.push(c.dim(`(${visible.length}/${results.length})`));
+    headerParts.push(c.dim(`(${visible.length}/${hits.length})`));
   }
 
-  return picker<MediaItem>({
+  return picker<SearchHit>({
     message: headerParts.join(" "),
     pageSize: PAGE_SIZE,
     choices,
@@ -229,34 +312,184 @@ async function displayItem(
   }
 }
 
+type FilmChoice =
+  | { readonly kind: "film"; readonly item: MediaItem }
+  | { readonly kind: "full" }
+  | { readonly kind: "subs" };
+
+async function pickFilm(
+  films: ReadonlyArray<MediaItem>,
+  total: number,
+  header: string,
+  action: { readonly value: FilmChoice; readonly label: string } | null,
+  m: ReturnType<typeof t>,
+): Promise<FilmChoice | null> {
+  const visible = films.slice(0, SOFT_LIMIT);
+  // `total` can exceed films.length when the source is paginated (discover
+  // returns one page); never report fewer than we actually hold.
+  const grandTotal = Math.max(total, films.length);
+
+  const choices = visible.map((item) => ({
+    name: filmChoiceName(item, m),
+    value: { kind: "film", item } as FilmChoice,
+    description: item.overview.slice(0, OVERVIEW_MAX),
+  }));
+  if (action) {
+    choices.push({ name: c.dim(`› ${action.label}`), value: action.value, description: "" });
+  }
+
+  const headerParts: string[] = [header];
+  if (grandTotal > visible.length) {
+    headerParts.push(c.dim(`(${visible.length}/${grandTotal})`));
+  }
+
+  return picker<FilmChoice>({
+    message: headerParts.join(" "),
+    pageSize: PAGE_SIZE,
+    choices,
+    extraKeys: [["esc", "back"]],
+  });
+}
+
+// a person opens to two views: what's on your subs right now (one discover
+// call, region- and provider-filtered server-side) and their full filmography
+// (combined credits). you can flip between them; picking a film drops into the
+// usual provider breakdown.
+async function runPerson(
+  person: PersonItem,
+  cfg: Config,
+  m: ReturnType<typeof t>,
+): Promise<void> {
+  const hasSubs = cfg.subscriptions.length > 0;
+  let view: "subs" | "full" = hasSubs ? "subs" : "full";
+  if (!hasSubs) {
+    console.log();
+    console.log(c.dim(`  ${m.personNoSubsConfigured}`));
+  }
+
+  // fetched lazily, then reused as you flip between views.
+  let onSubs: { films: ReadonlyArray<MediaItem>; total: number } | null = null;
+  let filmography: ReadonlyArray<MediaItem> | null = null;
+
+  while (true) {
+    if (view === "subs") {
+      if (onSubs === null) {
+        process.stdout.write(c.dim(`  ${m.loadingFilms(person.name)}`));
+        onSubs = await discoverPersonFilms({
+          personId: person.id,
+          department: person.department,
+          region: cfg.region,
+          providerIds: cfg.subscriptions,
+          token: cfg.tmdbToken,
+          language: cfg.language,
+        });
+        console.log(c.dim(m.resultsCount(onSubs.films.length)));
+      }
+      if (onSubs.films.length === 0) {
+        console.log();
+        console.log(
+          `  ${c.yellow("●")} ${m.personSubsEmpty(person.name, cfg.region)}`,
+        );
+        view = "full";
+        continue;
+      }
+      const picked = await pickFilm(
+        onSubs.films,
+        onSubs.total,
+        m.personSubsTitle(person.name, cfg.region),
+        { value: { kind: "full" }, label: m.personSeeFull },
+        m,
+      );
+      if (picked === null) return;
+      if (picked.kind === "film") {
+        await displayItem(picked.item, cfg, m);
+        return;
+      }
+      view = "full";
+      continue;
+    }
+
+    if (filmography === null) {
+      process.stdout.write(c.dim(`  ${m.loadingFilms(person.name)}`));
+      const credits = await getPersonCredits(person.id, cfg.tmdbToken, {
+        language: cfg.language,
+      });
+      filmography = toFilmography(credits, person.department);
+      console.log(c.dim(m.resultsCount(filmography.length)));
+    }
+    if (filmography.length === 0) {
+      console.log();
+      console.log(`  ${m.personNoCredits(person.name)}`);
+      return;
+    }
+    // only offer "back to your subs" when there's actually something there.
+    const canReturnToSubs =
+      hasSubs && onSubs !== null && onSubs.films.length > 0;
+    const picked = await pickFilm(
+      filmography,
+      filmography.length,
+      m.personFullTitle(person.name),
+      canReturnToSubs ? { value: { kind: "subs" }, label: m.personSeeSubs } : null,
+      m,
+    );
+    if (picked === null) return;
+    if (picked.kind === "film") {
+      await displayItem(picked.item, cfg, m);
+      return;
+    }
+    view = "subs";
+    continue;
+  }
+}
+
+async function searchTitles(
+  raw: string,
+  cfg: Config,
+  m: ReturnType<typeof t>,
+): Promise<ReadonlyArray<MediaItem>> {
+  const parsed = parseQuery(raw);
+  const displayQ = parsed.year ? `${parsed.query} (${parsed.year})` : parsed.query;
+  process.stdout.write(c.dim(`  ${m.searching(displayQ)}`));
+  const all = await searchAll(parsed.query, cfg.tmdbToken, {
+    language: cfg.language,
+  });
+  const results = parsed.year
+    ? all.filter((r) => r.date?.slice(0, 4) === String(parsed.year))
+    : all;
+  console.log(c.dim(m.resultsCount(results.length)));
+  return results;
+}
+
+async function searchUnified(
+  raw: string,
+  cfg: Config,
+  m: ReturnType<typeof t>,
+): Promise<ReadonlyArray<SearchHit>> {
+  const parsed = parseQuery(raw);
+  const displayQ = parsed.year ? `${parsed.query} (${parsed.year})` : parsed.query;
+  process.stdout.write(c.dim(`  ${m.searching(displayQ)}`));
+  const [titlesAll, people] = await Promise.all([
+    searchAll(parsed.query, cfg.tmdbToken, { language: cfg.language }),
+    // a trailing year filters titles; people don't have one, so the person
+    // lookup ignores it but still runs on the bare query.
+    searchPeople(parsed.query, cfg.tmdbToken, { language: cfg.language }),
+  ]);
+  const titles = parsed.year
+    ? titlesAll.filter((r) => r.date?.slice(0, 4) === String(parsed.year))
+    : titlesAll;
+  const hits = rankHits(titles, people, parsed.query);
+  console.log(c.dim(m.resultsCount(hits.length)));
+  return hits;
+}
+
 export async function runSearch(query: string, cfg: Config): Promise<void> {
   const m = t(resolveLocale(cfg.language));
   let currentQuery = query.trim();
   if (!currentQuery) throw new Error(m.searchEmpty);
 
-  const runSearchOnce = async (
-    raw: string,
-  ): Promise<ReadonlyArray<MediaItem>> => {
-    const parsed = parseQuery(raw);
-    const displayQ = parsed.year
-      ? `${parsed.query} (${parsed.year})`
-      : parsed.query;
-    process.stdout.write(c.dim(`  ${m.searching(displayQ)}`));
-    // no region: TMDB returns regional release dates with region param,
-    // but year filter expects original release year
-    const all = await searchAll(parsed.query, cfg.tmdbToken, {
-      language: cfg.language,
-    });
-    const results = parsed.year
-      ? all.filter((r) => r.date?.slice(0, 4) === String(parsed.year))
-      : all;
-    console.log(c.dim(m.resultsCount(results.length)));
-    return results;
-  };
-
-  // pipe mode: no prompts
+  // pipe mode: deterministic, titles only. person lookups are interactive.
   if (!process.stdin.isTTY) {
-    const results = await runSearchOnce(currentQuery);
+    const results = await searchTitles(currentQuery, cfg, m);
     if (results.length === 0) throw new Error(m.noMatch);
     if (results.length > 1) throw new Error(m.ambiguousQuery(results.length));
     await displayItem(results[0]!, cfg, m);
@@ -264,17 +497,18 @@ export async function runSearch(query: string, cfg: Config): Promise<void> {
   }
 
   while (true) {
-    const results = await runSearchOnce(currentQuery);
+    const hits = await searchUnified(currentQuery, cfg, m);
 
-    let picked: MediaItem | null = null;
-    if (results.length > 0) {
-      picked = await pickItem(results, m);
+    let picked: SearchHit | null = null;
+    if (hits.length > 0) {
+      picked = await pickHit(hits, m);
     } else {
       console.log(`\n  ${m.noMatch}`);
     }
 
     if (picked !== null) {
-      await displayItem(picked, cfg, m);
+      if (picked.kind === "person") await runPerson(picked.person, cfg, m);
+      else await displayItem(picked.item, cfg, m);
       return;
     }
 

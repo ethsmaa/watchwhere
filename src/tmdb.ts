@@ -32,6 +32,13 @@ export interface TmdbTv {
   readonly popularity: number;
 }
 
+// how a person is credited on a title, used to tag filmography entries.
+export type CreditRole = "acting" | "directing";
+
+// a person's primary department on TMDB. drives whether we match them as
+// cast or crew when discovering what's streamable.
+export type PersonDepartment = "acting" | "directing" | "other";
+
 export interface MediaItem {
   readonly id: number;
   readonly mediaType: MediaType;
@@ -40,11 +47,63 @@ export interface MediaItem {
   readonly date: string | null;
   readonly overview: string;
   readonly popularity: number;
+  // set only on filmography results (person lookups); absent for title search.
+  readonly role?: CreditRole;
+}
+
+export interface PersonItem {
+  readonly id: number;
+  readonly name: string;
+  readonly department: PersonDepartment;
+  readonly knownFor: ReadonlyArray<string>;
+  readonly popularity: number;
 }
 
 export interface TmdbSearchResponse<T> {
   readonly results: ReadonlyArray<T>;
   readonly total_results: number;
+}
+
+export interface TmdbPerson {
+  readonly id: number;
+  readonly name: string;
+  readonly known_for_department: string | null;
+  readonly popularity: number;
+  readonly profile_path: string | null;
+  readonly known_for?: ReadonlyArray<{
+    readonly title?: string;
+    readonly name?: string;
+  }>;
+}
+
+// one entry from /person/{id}/combined_credits. cast entries carry a
+// `character`, crew entries carry a `job` ("Director", "Writer", …).
+export interface TmdbPersonCredit {
+  readonly id: number;
+  readonly media_type: MediaType;
+  readonly title?: string;
+  readonly original_title?: string;
+  readonly name?: string;
+  readonly original_name?: string;
+  readonly release_date?: string;
+  readonly first_air_date?: string;
+  readonly overview?: string;
+  readonly popularity?: number;
+  readonly character?: string;
+  readonly job?: string;
+}
+
+export interface TmdbCombinedCreditsResponse {
+  readonly id: number;
+  readonly cast: ReadonlyArray<TmdbPersonCredit>;
+  readonly crew: ReadonlyArray<TmdbPersonCredit>;
+}
+
+export interface TmdbDiscoverResponse {
+  readonly page: number;
+  readonly results: ReadonlyArray<TmdbMovie>;
+  readonly total_results: number;
+  readonly total_pages: number;
 }
 
 export interface TmdbProvider {
@@ -243,6 +302,142 @@ export async function searchAll(
   return items.sort((a, b) => b.popularity - a.popularity);
 }
 
+function toPersonDepartment(knownForDepartment: string | null): PersonDepartment {
+  switch ((knownForDepartment ?? "").toLowerCase()) {
+    case "acting":
+      return "acting";
+    case "directing":
+      return "directing";
+    default:
+      return "other";
+  }
+}
+
+function toPersonItem(p: TmdbPerson): PersonItem {
+  const knownFor = (p.known_for ?? [])
+    .map((k) => k.title ?? k.name ?? "")
+    .filter((s) => s !== "");
+  return {
+    id: p.id,
+    name: p.name,
+    department: toPersonDepartment(p.known_for_department),
+    knownFor,
+    popularity: p.popularity,
+  };
+}
+
+export async function searchPeople(
+  query: string,
+  token: string,
+  opts: { language?: string } = {},
+): Promise<ReadonlyArray<PersonItem>> {
+  const data = await tmdbFetch<TmdbSearchResponse<TmdbPerson>>(
+    "/search/person",
+    token,
+    {
+      query,
+      include_adult: "false",
+      language: opts.language ?? DEFAULT_TMDB_LANGUAGE,
+    },
+  );
+  assertResultsArray(data, "/search/person");
+  return data.results
+    .map(toPersonItem)
+    .sort((a, b) => b.popularity - a.popularity);
+}
+
+function creditToMediaItem(credit: TmdbPersonCredit, role: CreditRole): MediaItem {
+  const isMovie = credit.media_type === "movie";
+  return {
+    id: credit.id,
+    mediaType: credit.media_type,
+    title: (isMovie ? credit.title : credit.name) ?? "",
+    originalTitle: (isMovie ? credit.original_title : credit.original_name) ?? "",
+    date: (isMovie ? credit.release_date : credit.first_air_date) ?? null,
+    overview: credit.overview ?? "",
+    popularity: credit.popularity ?? 0,
+    role,
+  };
+}
+
+export function getPersonCredits(
+  id: number,
+  token: string,
+  opts: { language?: string } = {},
+): Promise<TmdbCombinedCreditsResponse> {
+  return tmdbFetch<TmdbCombinedCreditsResponse>(
+    `/person/${id}/combined_credits`,
+    token,
+    { language: opts.language ?? DEFAULT_TMDB_LANGUAGE },
+  );
+}
+
+// a person's filmography, scoped to their primary role so the list stays
+// coherent: a director gets the films they directed, an actor gets the films
+// they acted in. people with no clear department get both, and when someone
+// directed and acted in the same title the directing credit wins.
+export function toFilmography(
+  credits: TmdbCombinedCreditsResponse,
+  department: PersonDepartment,
+): ReadonlyArray<MediaItem> {
+  const byKey = new Map<string, MediaItem>();
+  const put = (item: MediaItem): void => {
+    const key = `${item.mediaType}:${item.id}`;
+    const existing = byKey.get(key);
+    // directing overrides a prior acting credit; never the reverse.
+    if (!existing || existing.role === "acting") byKey.set(key, item);
+  };
+  if (department !== "directing") {
+    for (const credit of credits.cast ?? []) {
+      put(creditToMediaItem(credit, "acting"));
+    }
+  }
+  if (department !== "acting") {
+    for (const credit of credits.crew ?? []) {
+      if (credit.job === "Director") put(creditToMediaItem(credit, "directing"));
+    }
+  }
+  return [...byKey.values()].sort((a, b) => b.popularity - a.popularity);
+}
+
+// what of a person's work is streamable on the given subs, in one request.
+// TMDB's discover endpoint filters by provider + region server-side, so we
+// avoid a watch/providers call per title. actors are matched as cast,
+// everyone else (directors, writers) as crew. movies only — discover has no
+// reliable person filter for tv.
+//
+// returns the first page (up to 20) plus the true total, so the caller can
+// show "20 of N". providerIds must be non-empty: an empty list makes TMDB
+// drop the provider filter and return everything.
+export async function discoverPersonFilms(opts: {
+  personId: number;
+  department: PersonDepartment;
+  region: string;
+  providerIds: ReadonlyArray<number>;
+  token: string;
+  language?: string;
+}): Promise<{ films: ReadonlyArray<MediaItem>; total: number }> {
+  const personParam = opts.department === "acting" ? "with_cast" : "with_crew";
+  const data = await tmdbFetch<TmdbDiscoverResponse>(
+    "/discover/movie",
+    opts.token,
+    {
+      [personParam]: String(opts.personId),
+      watch_region: opts.region,
+      with_watch_providers: opts.providerIds.join("|"),
+      with_watch_monetization_types: "flatrate",
+      sort_by: "popularity.desc",
+      include_adult: "false",
+      language: opts.language ?? DEFAULT_TMDB_LANGUAGE,
+    },
+  );
+  assertResultsArray(data, "/discover/movie");
+  return {
+    films: data.results.map((m) => toMediaItem(m, "movie")),
+    total: data.total_results ?? data.results.length,
+  };
+}
+
 export async function getRegionProviders(
   region: string,
   token: string,
@@ -295,6 +490,18 @@ const REGION_PIN_ORDER: Record<string, ReadonlyArray<number>> = {
     1899, // Max (HBO Max)
     11,   // MUBI
     188,  // YouTube Premium
+  ],
+  US: [
+    8,    // Netflix
+    9,    // Amazon Prime Video
+    1899, // HBO Max
+    337,  // Disney Plus
+    15,   // Hulu
+    350,  // Apple TV+
+    386,  // Peacock Premium
+    2303, // Paramount Plus Premium
+    43,   // Starz
+    526,  // AMC+
   ],
 };
 

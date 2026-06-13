@@ -44,7 +44,7 @@ ww init
 ## commands
 
 ```
-ww <title>       search and show providers
+ww <title>       search a movie, show, or person
 ww init          set up region, subscriptions (and token, if not using proxy)
 ww subs          edit subscriptions
 ww lang          change UI language (en / tr)
@@ -53,6 +53,21 @@ ww config        show current config
 ww --help
 ww --version
 ```
+
+## search by people
+
+sometimes you don't have a title in mind, you have a person. type a name:
+
+```bash
+ww paul thomas anderson   # films he directed
+ww daniel day-lewis       # films he's in
+```
+
+pick the person from the list and you get their films that are on your subs,
+in your region, first. one lookup, no clicking through each app. hit "see full
+filmography" to browse everything they did.
+
+directors get the films they directed, actors get the ones they acted in.
 
 ## notes
 

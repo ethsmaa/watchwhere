@@ -53,6 +53,22 @@ interface Catalog {
   rent: string;
   buy: string;
 
+  // person search / filmography
+  tagPerson: string;
+  personActor: string;
+  personDirector: string;
+  personCrew: string;
+  roleDir: string;
+  roleAct: string;
+  loadingFilms: (name: string) => string;
+  personSubsTitle: (name: string, region: string) => string;
+  personFullTitle: (name: string) => string;
+  personSubsEmpty: (name: string, region: string) => string;
+  personSeeFull: string;
+  personSeeSubs: string;
+  personNoCredits: (name: string) => string;
+  personNoSubsConfigured: string;
+
   // config (show)
   noConfigYet: string;
   resolvingNames: string;
@@ -82,10 +98,23 @@ interface Catalog {
   providersFound: (n: number) => string;
   noProviders: (region: string) => string;
   yourSubsLabel: (region: string) => string;
-  toggleHintConfirm: string;
-  toggleHintSave: string;
   savedTo: string;
   updatedConfigFile: string;
+
+  // filterable checkbox (subs picker)
+  filterLabel: string;
+  searchLabel: string;
+  selectedCount: (n: number) => string;
+  hintNavigate: string;
+  hintJump: string;
+  hintToggle: string;
+  hintSearch: string;
+  hintFilter: string;
+  hintApply: string;
+  hintClear: string;
+  hintSave: string;
+  hintCancel: string;
+  noFilterMatch: string;
 
   // validation
   corruptConfig: (path: string) => string;
@@ -168,6 +197,23 @@ const en: Catalog = {
   rent: "rent",
   buy: "buy",
 
+  tagPerson: "person",
+  personActor: "actor",
+  personDirector: "director",
+  personCrew: "crew",
+  roleDir: "dir",
+  roleAct: "act",
+  loadingFilms: (name) => `loading ${name}'s films… `,
+  personSubsTitle: (name, region) => `${name} — on your subs in ${region}`,
+  personFullTitle: (name) => `${name} — full filmography`,
+  personSubsEmpty: (name, region) =>
+    `nothing of ${name}'s is on your subs in ${region} — showing full filmography.`,
+  personSeeFull: "see full filmography",
+  personSeeSubs: "back to your subs",
+  personNoCredits: (name) => `no filmography found for ${name}.`,
+  personNoSubsConfigured:
+    "no subscriptions set yet — showing full filmography. run `ww subs` to add some.",
+
   noConfigYet: "no config yet — run `ww init` first.",
   resolvingNames: "resolving subscription names… ",
   configTitle: "watchwhere config",
@@ -197,10 +243,22 @@ const en: Catalog = {
   noProviders: (region) =>
     `no providers found for region ${region}. check the code.`,
   yourSubsLabel: (region) => `your subscriptions in ${region}`,
-  toggleHintConfirm: "(space to toggle, enter to confirm)",
-  toggleHintSave: "(space to toggle, enter to save)",
   savedTo: "saved to",
   updatedConfigFile: "updated",
+
+  filterLabel: "filter:",
+  searchLabel: "search:",
+  selectedCount: (n) => `${n} selected`,
+  hintNavigate: "navigate",
+  hintJump: "top/bottom",
+  hintToggle: "toggle",
+  hintSearch: "search",
+  hintFilter: "filter",
+  hintApply: "apply",
+  hintClear: "clear",
+  hintSave: "save",
+  hintCancel: "cancel",
+  noFilterMatch: "no match — esc to clear the search",
 
   corruptConfig: (path) => `corrupt config file: ${path}`,
 
@@ -214,7 +272,7 @@ const en: Catalog = {
   usageTagline: "where can I stream it?",
   usageSectionUsage: "usage",
   usageSectionConfig: "config",
-  usageDescTitle: "search a movie or show in your region",
+  usageDescTitle: "search a movie, show, or person in your region",
   usageDescInit: "set up token, region, language, subscriptions",
   usageDescSubs: "edit your subscriptions only",
   usageDescLang: "change display language",
@@ -278,6 +336,23 @@ const tr: Catalog = {
   rent: "kirala",
   buy: "satın al",
 
+  tagPerson: "kişi",
+  personActor: "oyuncu",
+  personDirector: "yönetmen",
+  personCrew: "ekip",
+  roleDir: "yön",
+  roleAct: "oyun",
+  loadingFilms: (name) => `${name} filmleri yükleniyor… `,
+  personSubsTitle: (name, region) => `${name} — ${region} aboneliklerinde`,
+  personFullTitle: (name) => `${name} — tüm filmografi`,
+  personSubsEmpty: (name, region) =>
+    `${name} için ${region} aboneliklerinde bir şey yok — tüm filmografi gösteriliyor.`,
+  personSeeFull: "tüm filmografiyi gör",
+  personSeeSubs: "aboneliklerine dön",
+  personNoCredits: (name) => `${name} için filmografi bulunamadı.`,
+  personNoSubsConfigured:
+    "henüz abonelik yok — tüm filmografi gösteriliyor. eklemek için `ww subs`.",
+
   noConfigYet: "henüz config yok — önce `ww init` çalıştır.",
   resolvingNames: "abonelik isimleri çözümleniyor… ",
   configTitle: "watchwhere config",
@@ -308,10 +383,22 @@ const tr: Catalog = {
   noProviders: (region) =>
     `${region} bölgesi için sağlayıcı bulunamadı. kodu kontrol edin.`,
   yourSubsLabel: (region) => `${region} bölgesindeki aboneliklerin`,
-  toggleHintConfirm: "(seçmek için space, onaylamak için enter)",
-  toggleHintSave: "(seçmek için space, kaydetmek için enter)",
   savedTo: "kaydedildi:",
   updatedConfigFile: "güncellendi",
+
+  filterLabel: "filtre:",
+  searchLabel: "ara:",
+  selectedCount: (n) => `${n} seçili`,
+  hintNavigate: "gezin",
+  hintJump: "baş/son",
+  hintToggle: "seç",
+  hintSearch: "ara",
+  hintFilter: "filtrele",
+  hintApply: "uygula",
+  hintClear: "temizle",
+  hintSave: "kaydet",
+  hintCancel: "iptal",
+  noFilterMatch: "eşleşme yok — temizlemek için esc",
 
   corruptConfig: (path) => `bozuk config dosyası: ${path}`,
 
@@ -325,7 +412,7 @@ const tr: Catalog = {
   usageTagline: "nerede izleyebilirim?",
   usageSectionUsage: "kullanım",
   usageSectionConfig: "config",
-  usageDescTitle: "bölgendeki bir film veya diziyi ara",
+  usageDescTitle: "bölgendeki bir film, dizi veya kişiyi ara",
   usageDescInit: "token, bölge, dil ve abonelikleri ayarla",
   usageDescSubs: "sadece abonelikleri düzenle",
   usageDescLang: "görüntüleme dilini değiştir",

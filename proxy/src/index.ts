@@ -13,9 +13,11 @@ const MAX_URL_LENGTH = 512;
 
 // strict whitelist — only the endpoints the watchwhere CLI actually uses
 const ALLOWED_PATHS: ReadonlyArray<RegExp> = [
-  /^\/search\/(movie|tv)$/,
+  /^\/search\/(movie|tv|person)$/,
   /^\/(movie|tv)\/\d+\/watch\/providers$/,
   /^\/movie\/\d+\/release_dates$/,
+  /^\/person\/\d+\/combined_credits$/,
+  /^\/discover\/movie$/,
   /^\/watch\/providers\/(movie|tv)$/,
   /^\/authentication$/,
 ];
@@ -23,8 +25,10 @@ const ALLOWED_PATHS: ReadonlyArray<RegExp> = [
 const CACHE_TTL: ReadonlyArray<[string, number]> = [
   ["/watch/providers", 24 * 60 * 60],
   ["/search/", 60 * 60],
+  ["/discover/", 60 * 60],
   ["/movie/", 60 * 60],
   ["/tv/", 60 * 60],
+  ["/person/", 60 * 60],
   ["/authentication", 0],
 ];
 
